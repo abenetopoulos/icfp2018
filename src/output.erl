@@ -11,7 +11,7 @@
 
 write_trace_file(Trace) ->
     EncodedTrace = lists:map(fun(Command) -> encode_command(Command) end, Trace),
-    OutputFile = "out_test",
+    OutputFile = "out_test.nbt",
     BinOfList = fun(L) ->
                         lists:foldl(fun(V, Acc) ->
                                             <<Acc/binary, V/binary>>
