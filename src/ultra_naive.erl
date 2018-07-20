@@ -13,11 +13,13 @@ print_model(R, Model) ->
 print_voxel(_R, 1, 1, 1, _Model, fill) ->
     [];
 print_voxel(R, X, Y, Z, Model, Flag) when Z =:= (R-1) ->
-    return(z, R, Z) ++ print_voxel(R, X, Y + 1, 1, Model, Flag);
+    return(z, R, Z) ++ [{smove, [{0, 1, 0}]}] ++ 
+	print_voxel(R, X, Y + 1, 1, Model, Flag);
 print_voxel(R, X, Y, Z, Model, Flag) when Y =:= R ->
-    return(y, R, Y) ++ print_voxel(R, X + 1, 1, Z, Model, Flag);
+    return(y, R, Y) ++ [{smove, [{1, 0, 0}]}] ++ 
+	print_voxel(R, X + 1, 1, Z, Model, Flag);
 print_voxel(R, X, Y, Z, Model, Flag) when X =:= R ->
-    [];
+    return(x, R, X);
     %% return(x, R, X) ++ print_voxel(R, 1, Y, Z, Model, Flag);
 print_voxel(R, X, Y, Z, Model, _Flag) ->
     %% erlang:display({X,Y,Z}),
