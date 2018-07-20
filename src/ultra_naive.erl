@@ -6,11 +6,36 @@
 
 print_model(R, Model) ->
     Flip = {flip, []},
-    Moves = print_voxel(R, 1, 1, 2, Model, []),
+    Moves = print_levels(1, R, Model),
     Halt = {halt, []},
-    [Flip] ++ [{smove, [{0,0,1}]}] ++ Moves ++ [Flip] ++ [Halt].
+    [Flip] ++ Moves ++ [Flip] ++ [Halt].
 
-print_voxel(R, X, Y, Z, Model, Acc) when Z =:= R ->
+print_levels(Y, R, Model) ->
+    case points_in_level(Y, R, Model) of
+	[] ->
+	    bounding_box:move_robot({1,Y,1}, {1,1,1});
+	LevelPoints ->
+	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,R+1,R+1}, {0,0,0}),
+	    io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
+	    Moves = bounding_box:print_box(BoxMin, BoxMax, {1,Y,1}, Model),
+	    %% io:format("Moves:~n~p~n", [Moves]),
+	    Moves ++ print_levels(Y+1, R, Model)
+    end.
+
+
+points_in_level(Y, R, Model) ->
+    AllPointsInLevel = lists:flatten([[{X, Y, Z} || X <- lists:seq(1,R)] 
+				      || Z <- lists:seq(1,R)]),
+    [{X, Y, Z} || {X, Y, Z} <- AllPointsInLevel, nth(Z, nth(Y, nth(X, Model))) =:= 1].
+
+
+%% print_model(R, Model) ->
+%%     Flip = {flip, []},
+%%     Moves = print_voxel(R, 1, 1, 2, Model),
+%%     Halt = {halt, []},
+%%     [Flip] ++ [{smove, [{0,0,1}]}] ++ Moves ++ [Flip] ++ [Halt].
+
+print_voxel(R, X, Y, Z, Model) when Z =:= R ->
     [{smove, [{1, 0, 0}]}] ++ return(z, R, Z) ++ 
 	print_voxel(R, X + 1, Y, 2, Model);
 print_voxel(R, X, Y, Z, Model) when X =:= R ->
