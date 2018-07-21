@@ -11,7 +11,10 @@ run_all() ->
 	      OutputFilename = io_lib:format("output/LA~3..0B.nbt", [Testcase]),
 	      {R, Model} = parse_mdl:parse(InputFilename),
 	      ParBots = 19,
-	      Traces = ultra_naive:print_model_parallel(R, Model, ParBots),
+	      ModelMap = topological:height_map(R, Model),
+	      HighestLevel = highest_level(R, R, ModelMap),
+	      AdequateParBots = min(ParBots, HighestLevel),
+	      Traces = ultra_naive:print_model_parallel(R, Model, AdequateParBots),
 	      %% io:format("Model:~n~p~n", [Model]),
 	      %% io:format("Traces:~n~p~n", [Traces]),
 	      output:write_trace_file(Traces, OutputFilename),
@@ -20,10 +23,13 @@ run_all() ->
 
 
 main() ->
-    {R, Model} = parse_mdl:parse("problemsL/LA046_tgt.mdl"),
+    {R, Model} = parse_mdl:parse("problemsL/LA003_tgt.mdl"),
     %% Traces = ultra_naive:print_model(R, Model),
     ParBots = 19,
-    Traces = ultra_naive:print_model_parallel(R, Model, ParBots),
+    ModelMap = topological:height_map(R, Model),
+    HighestLevel = highest_level(R, R, ModelMap),
+    AdequateParBots = min(ParBots, HighestLevel),
+    Traces = ultra_naive:print_model_parallel(R, Model, AdequateParBots),
     %% SpawnCommands = parallel:spawn_bots(4),
     %% io:format("Spawns: ~p~n", [SpawnCommands]),
     %% io:format("Model:~n~p~n", [Model]),
@@ -38,3 +44,11 @@ out_test() ->
                              {fusionp, [{1,2,3}]}, {fusions, [{1,2,3}]}, {fission, [{1,2,3}, 42]}, {fill, [{1,2,3}]}]),
     io:format("Trace written~n").
 
+
+highest_level(N, R, Model) ->
+    case ultra_naive:points_in_level(N, R, Model) of
+	[] ->
+	    highest_level(N-1, R, Model);
+	_ ->
+	    N
+    end.

@@ -40,9 +40,13 @@ create_stalls([Bid|Bids], Moves, Coords, OptMoves) ->
 	{ok, [Move|Rest]} ->
 	    Curr = maps:get(Bid, Coords),
 	    case is_there_any_collision(Curr, Move, Bids, Moves, Coords) of
-		collision ->
+		{collision, curr_waits} ->
 		    NewOptMoves = maps:update_with(Bid, fun(Mvs) -> [{wait,[]}|Mvs] end, OptMoves),
 		    create_stalls(Bids, Moves, Coords, NewOptMoves); 
+		{collision, {next_waits, BidNext}} ->
+		    NewOptMoves = maps:update_with(BidNext, fun(Mvs) -> [{wait,[]}|Mvs] end, OptMoves),
+		    NewBids = [Bid|Bids] -- [BidNext],
+		    create_stalls(NewBids, Moves, Coords, NewOptMoves); 	
 		no_collision ->
 		    NewCoords = simulate_command(Bid, Move, Curr, Coords),
 		    NewMoves = Moves#{Bid => Rest},
@@ -66,10 +70,26 @@ is_there_any_collision(Curr, Move, [Bid|Bids], Moves, Coords) ->
 	    Curr2 = maps:get(Bid, Coords),
 	    case is_collision(Curr, Move, Curr2, Move2) of
 		true ->
-		    collision;
+		    {collision, who_waits(Curr, Curr2, Move2, Bid)};
 		false -> 
 		    is_there_any_collision(Curr, Move, Bids, Moves, Coords)
 	    end
+    end.
+
+who_waits({Ax, Ay, Az}, {Bx, By, Bz}, {_, [{Dx, Dy, Dz}]}, Bid2) ->
+    MinBx = min(Bx, Bx + Dx),
+    MaxBx = max(Bx, Bx + Dx),
+    MinBy = min(By, By + Dy),
+    MaxBy = max(By, By + Dy),
+    MinBz = min(Bz, Bz + Dz),
+    MaxBz = max(Bz, Bz + Dz),
+    if 
+	MinBx =< Ax andalso MaxBx >= Ax andalso
+	MinBy =< Ay andalso MaxBy >= Ay andalso
+	MinBz =< Az andalso MaxBz >= Az ->
+	    {next_waits, Bid2};
+	true ->
+	    curr_waits
     end.
 
 is_collision(Curr1, {_, [Cd1 = {_,_,_}]}, Curr2, {_, [Cd2 = {_,_,_}]}) ->

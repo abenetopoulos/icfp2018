@@ -4,6 +4,8 @@ EBIN_DIR   = ebin
 EBIN_DIRS  = $(EBIN_DIR)
 ERL_FILES  = $(wildcard *.erl)
 BEAM_FILES = $(subst .erl,.beam,$(ERL_FILES))
+ERL_COMPILE_FLAGS = +native '+{hipe, [o3]}'
+
 
 HALT = -s erlang halt
 

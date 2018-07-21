@@ -1,7 +1,8 @@
 -module(ultra_naive).
 
 -export([print_model/2,
-	 print_model_parallel/3]).
+	 print_model_parallel/3,
+	 points_in_level/3]).
 
 -import(lists, [nth/2]).
 
@@ -20,7 +21,8 @@ print_model_parallel(R, Model, ParallelBots) ->
     Bids = lists:seq(1,ParallelBots),
     EmptyCommands = maps:from_list([{B, []} || B <- Bids]),
     NewCurrs = maps:from_list([{B, {1,B,B}} || B <- Bids]),
-    ParallelMoves = print_levels_parallel(1, R, ModelMap, Bids, EmptyCommands, NewCurrs),
+    BidsWork = lists:zip(Bids, [0 || _ <- Bids]), 
+    ParallelMoves = print_levels_parallel(1, R, ModelMap, BidsWork, EmptyCommands, NewCurrs),
     %% io:format("Parallel Moves: ~n~p~n", [maps:keys(ParallelMoves)]),
     StalledParallelMoves = parallel:create_stalls(Bids, ParallelMoves),
     Moves = serialize_parallel_moves(Bids, StalledParallelMoves, []),
@@ -30,14 +32,15 @@ print_model_parallel(R, Model, ParallelBots) ->
     Halt = {halt, []},
     [Flip] ++ SpawnMoves ++ Moves ++ GatherMoves ++ [Flip] ++ [Halt].
 
-print_levels_parallel(R, R, Model, Bids, Commands, CurrCoords) ->
+print_levels_parallel(R, R, Model, BidsWork, Commands, CurrCoords) ->
+    {Bids, _} = lists:unzip(BidsWork),
     {NewCommands, NewCoords} = move_robots_back(Bids, Commands, CurrCoords),
     NewCommands;
-print_levels_parallel(Y, R, Model, [Bid|Bids], Commands, CurrCoords) ->
+print_levels_parallel(Y, R, Model, [{Bid, Work}|BidsWork], Commands, CurrCoords) ->
     CurrBidPos = maps:get(Bid, CurrCoords),
     case points_in_level(Y, R, Model) of
 	[] ->
-	    print_levels_parallel(R, R, Model, Bids ++ [Bid], Commands, CurrCoords);
+	    print_levels_parallel(R, R, Model, insert_bids_work({Bid, Work}, BidsWork), Commands, CurrCoords);
 	LevelPoints ->
 	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,Y,R+1}, {0,Y,0}),
 	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
@@ -51,7 +54,22 @@ print_levels_parallel(Y, R, Model, [Bid|Bids], Commands, CurrCoords) ->
 		maps:update_with(Bid, fun(BidComms) -> BidComms ++ OptimizedMoves end, Commands),
 	    NewCurrCoords =
 		maps:update_with(Bid, fun(_) -> FinalPos end, CurrCoords),
-	    print_levels_parallel(Y+1, R, Model, Bids ++ [Bid], NewCommands, NewCurrCoords)
+	    print_levels_parallel(Y+1, R, Model, 
+				  insert_bids_work({Bid, Work + length(OptimizedMoves)}, BidsWork), 
+				  NewCommands, NewCurrCoords)
+    end.
+
+insert_bids_work({Bid, Work}, BidsWork) ->
+    insert_bids_work({Bid, Work}, BidsWork, []).
+
+insert_bids_work({Bid, Work}, [], Acc) ->
+    lists:reverse([{Bid, Work}|Acc]);
+insert_bids_work({Bid, Work}, Rest = [{Bid2, Work2}|BidsWork], Acc) ->
+    case Work =< Work2 of
+	true ->
+	    lists:reverse([{Bid, Work}|Acc]) ++ Rest;
+	false ->
+	    insert_bids_work({Bid, Work}, BidsWork, [{Bid2, Work2}|Acc])
     end.
 
 move_robots_back([], Commands, CurrCoords) ->
