@@ -19,37 +19,45 @@ find_box([{X, Y, Z}|Points], {MinX, MinY, MinZ}, {MaxX, MaxY, MaxZ}) ->
 %% TODO: Optimize with parallelism
 print_box(Min, Max, Curr, Model) -> 
     Pre = move_robot(Curr, Min),
-    {Moves, NewCurr} = print_voxel(Min, Max, Min, Model, []),
+    % We always cover bounding boxes from low to high x and z, so initial direction is plus
+    {Moves, NewCurr} = print_voxel(Min, Max, Min, plus, Model, []),
     {Pre ++ Moves, NewCurr}.	
     
 %% We paint the voxel behind us that is why Z > MaxZ + 1
-print_voxel(Min={_,_,MinZ}, Max={_,_,MaxZ}, Curr={X,Y,Z}, Model, Acc) when Z > MaxZ ->
-    {_, ReturnMoves} = linear_move(z, Curr, Min),
-    NewAcc = lists:reverse(ReturnMoves) ++ [{smove, [{1, 0, 0}]}|Acc],
-    print_voxel(Min, Max, {X + 1, Y, MinZ}, Model, NewAcc);
-print_voxel(Min={MinX,_,MinZ}, Max={MaxX,_,MaxZ}, Curr={X,Y,Z}, Model, Acc) when X > MaxX ->
+print_voxel(Min={_,_,MinZ}, Max={_,_,MaxZ}, Curr={X,Y,Z}, plus, Model, Acc) when Z > MaxZ ->
+    NewAcc = [{smove, [{1, 0, 0}]}|Acc],
+    print_voxel(Min, Max, {X + 1, Y, Z}, minus, Model, NewAcc);
+print_voxel(Min={_,_,MinZ}, Max={_,_,MaxZ}, Curr={X,Y,Z}, minus, Model, Acc) when Z < MinZ ->
+    NewAcc = [{smove, [{1, 0, 0}]}|Acc],
+    print_voxel(Min, Max, {X + 1, Y, Z}, plus, Model, NewAcc);
+print_voxel(Min={MinX,_,MinZ}, Max={MaxX,_,MaxZ}, Curr={X,Y,Z}, Direction, Model, Acc) when X > MaxX ->
     %% {_, ReturnMoves} = linear_move(x, Curr, Min),
-    OneBack = [{smove, [{0,0,-1}]}],
-    MoveToStart = move_robot({X, Y, Z-1}, {MinX-1,Y,MinZ-1}),
-    {lists:reverse(Acc) ++ OneBack ++ MoveToStart, {MinX-1,Y,MinZ-1}};
+    MoveToStart = lists:flatten([move_robot({X, Y, Z}, {X, Y, MinZ - 1}), move_robot({X, Y, MinZ - 1}, {MinX - 1, Y, MinZ - 1})]),
+    {lists:reverse(Acc) ++ MoveToStart, {MinX-1,Y,MinZ-1}};
     %% NewAcc = lists:reverse(ReturnMoves) ++ [{smove, [{0, 1, 0}]}|Acc],
     %% print_voxel(Min, Max, {MinX, Y + 1, Z}, Model, NewAcc);
 %% print_voxel(Min={_,MinY,_}, Max={_,MaxY,_}, Curr={X,Y,Z}, Model, NewAcc) when Y > MaxY ->
 %%     ReturnMoves = move_robot(Curr, {1, Y, 1}),
 %%     {lists:reverse(NewAcc) ++ ReturnMoves, {1, Y, 1}};
-print_voxel(Min, Max, {X, Y, Z}, Model, Acc) ->
+print_voxel(Min, Max, {X, Y, Z}, Direction, Model, Acc) ->
     %% erlang:display({X,Y,Z}),
-    Move = [{smove, [{0,0,1}]}],
-    NewZ = Z + 1,
+    {Move, NewZ} = case Direction of
+               plus -> {[{smove, [{0,0,1}]}], Z + 1};
+               minus -> {[{smove, [{0,0,-1}]}], Z - 1}
+           end,
+    {Lookup, ToFill} = case Direction of
+                 plus -> {{X,Y,NewZ - 1}, {0, 0, -1}};
+                 minus -> {{X,Y,NewZ + 1}, {0, 0, 1}}
+             end,
     Fill =
-	case model_get({X,Y,NewZ - 1}, Model) of
+	case model_get(Lookup, Model) of
 	    0 -> 
 		[];
 	    1 ->
-		[{fill, [{0,0,-1}]}]
+		[{fill, [ToFill]}]
 	end,	    
     NewAcc = Fill ++ Move ++ Acc,
-    print_voxel(Min, Max, {X, Y, NewZ}, Model, NewAcc).
+    print_voxel(Min, Max, {X, Y, NewZ}, Direction, Model, NewAcc).
     
 
 model_get({X,Y,Z}, Model) ->
