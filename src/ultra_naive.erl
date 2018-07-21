@@ -1,7 +1,7 @@
 -module(ultra_naive).
 
 -export([print_model/2,
-	 print_model_parallel/3,
+	 print_model_parallel/4,
 	 points_in_level/3]).
 
 -import(lists, [nth/2]).
@@ -13,7 +13,7 @@ print_model(R, Model) ->
     Halt = {halt, []},
     [Flip] ++ Moves ++ [Flip] ++ [Halt].
 
-print_model_parallel(R, Model, ParallelBots) ->
+print_model_parallel(R, Model, ParallelBots, HighestLevel) ->
     Flip = {flip, []},
     ModelMap = topological:height_map(R, Model),
     SpawnMoves = parallel:spawn_bots(ParallelBots-1),
@@ -30,7 +30,13 @@ print_model_parallel(R, Model, ParallelBots) ->
     GatherMoves = parallel:gather_bots(ParallelBots-1),
     %% io:format("GatherMoves: ~p~n", [GatherMoves]),
     Halt = {halt, []},
-    [Flip] ++ SpawnMoves ++ Moves ++ GatherMoves ++ [Flip] ++ [Halt].
+    io:format("Highestlevel: ~p~n", [HighestLevel]),
+    case HighestLevel of
+	1 ->
+	    SpawnMoves ++ Moves ++ GatherMoves ++ [Halt];
+	_ ->
+	    [Flip] ++ SpawnMoves ++ Moves ++ GatherMoves ++ [Flip] ++ [Halt]
+    end.
 
 print_levels_parallel(R, R, Model, BidsWork, Commands, CurrCoords) ->
     {Bids, _} = lists:unzip(BidsWork),
