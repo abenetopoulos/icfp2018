@@ -4,7 +4,8 @@
 	 print_box/4,
 	 move_robot/2,
 	 model_get/2,
-	 optimize_one_bot_moves/1]).
+	 optimize_one_bot_moves/1,
+	 add_coords/2]).
 
 -import(lists, [nth/2]).
 
@@ -18,21 +19,24 @@ find_box([{X, Y, Z}|Points], {MinX, MinY, MinZ}, {MaxX, MaxY, MaxZ}) ->
 %% TODO: Optimize with parallelism
 print_box(Min, Max, Curr, Model) -> 
     Pre = move_robot(Curr, Min),
-    Moves = print_voxel(Min, Max, Min, Model, []),
-    Pre ++ Moves.	
+    {Moves, NewCurr} = print_voxel(Min, Max, Min, Model, []),
+    {Pre ++ Moves, NewCurr}.	
     
 %% We paint the voxel behind us that is why Z > MaxZ + 1
 print_voxel(Min={_,_,MinZ}, Max={_,_,MaxZ}, Curr={X,Y,Z}, Model, Acc) when Z > MaxZ ->
     {_, ReturnMoves} = linear_move(z, Curr, Min),
     NewAcc = lists:reverse(ReturnMoves) ++ [{smove, [{1, 0, 0}]}|Acc],
     print_voxel(Min, Max, {X + 1, Y, MinZ}, Model, NewAcc);
-print_voxel(Min={MinX,_,_}, Max={MaxX,_,_}, Curr={X,Y,Z}, Model, Acc) when X > MaxX ->
-    {_, ReturnMoves} = linear_move(x, Curr, Min),
-    NewAcc = lists:reverse(ReturnMoves) ++ [{smove, [{0, 1, 0}]}|Acc],
-    print_voxel(Min, Max, {MinX, Y + 1, Z}, Model, NewAcc);
-print_voxel(Min={_,MinY,_}, Max={_,MaxY,_}, Curr={X,Y,Z}, Model, NewAcc) when Y > MaxY ->
-    ReturnMoves = move_robot(Curr, {1, Y, 1}),
-    lists:reverse(NewAcc) ++ ReturnMoves;
+print_voxel(Min={MinX,_,MinZ}, Max={MaxX,_,MaxZ}, Curr={X,Y,Z}, Model, Acc) when X > MaxX ->
+    %% {_, ReturnMoves} = linear_move(x, Curr, Min),
+    OneBack = [{smove, [{0,0,-1}]}],
+    MoveToStart = move_robot({X, Y, Z-1}, {MinX-1,Y,MinZ-1}),
+    {lists:reverse(Acc) ++ OneBack ++ MoveToStart, {MinX-1,Y,MinZ-1}};
+    %% NewAcc = lists:reverse(ReturnMoves) ++ [{smove, [{0, 1, 0}]}|Acc],
+    %% print_voxel(Min, Max, {MinX, Y + 1, Z}, Model, NewAcc);
+%% print_voxel(Min={_,MinY,_}, Max={_,MaxY,_}, Curr={X,Y,Z}, Model, NewAcc) when Y > MaxY ->
+%%     ReturnMoves = move_robot(Curr, {1, Y, 1}),
+%%     {lists:reverse(NewAcc) ++ ReturnMoves, {1, Y, 1}};
 print_voxel(Min, Max, {X, Y, Z}, Model, Acc) ->
     %% erlang:display({X,Y,Z}),
     Move = [{smove, [{0,0,1}]}],

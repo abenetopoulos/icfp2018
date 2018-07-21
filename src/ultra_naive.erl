@@ -16,12 +16,18 @@ print_model_parallel(R, Model) ->
     Flip = {flip, []},
     ModelMap = topological:height_map(R, Model),
     SpawnMoves = parallel:spawn_bots(2),
-    io:format("SpawnMoves: ~p~n", [SpawnMoves]),
-    Bids = [1,2,3],
-    ParallelMoves = print_levels_parallel(1, R, ModelMap, [1], #{1 => []}, #{1 => {1,1,1}}),
-    Moves = serialize_parallel_moves([1], ParallelMoves, []),
+    %% io:format("SpawnMoves: ~p~n", [SpawnMoves]),
+    Bids = lists:seq(1,3),
+    EmptyCommands = maps:from_list([{B, []} || B <- Bids]),
+    NewCurrs = maps:from_list([{B, {1,B,B}} || B <- Bids]),
+    ParallelMoves = print_levels_parallel(1, R, ModelMap, Bids, EmptyCommands, NewCurrs),
+    %% io:format("Parallel Moves: ~n~p~n", [maps:keys(ParallelMoves)]),
+    Moves = serialize_parallel_moves(Bids, ParallelMoves, []),
+    %% io:format("Moves: ~n~p~n", [Moves]),
+    GatherMoves = parallel:gather_bots(2),
+    %% io:format("GatherMoves: ~p~n", [GatherMoves]),
     Halt = {halt, []},
-    [Flip] ++ Moves ++ [Flip] ++ [Halt].
+    [Flip] ++ SpawnMoves ++ Moves ++ GatherMoves ++ [Flip] ++ [Halt].
 
 print_levels_parallel(R, R, Model, _Bids, Commands, CurrCoords) ->
     Commands;
@@ -29,36 +35,46 @@ print_levels_parallel(Y, R, Model, [Bid|Bids], Commands, CurrCoords) ->
     CurrBidPos = maps:get(Bid, CurrCoords),
     case points_in_level(Y, R, Model) of
 	[] ->
-	    MoveBack = bounding_box:move_robot(CurrBidPos, {1,Bid,Bid}),
-	    NewCommands = 
-		maps:update_with(Bid, fun(BidComms) -> BidComms ++ MoveBack end, Commands),
-	    NewCurrCoords =
-		maps:update_with(Bid, fun(_) -> {1,Bid,Bid} end, CurrCoords),
-	    print_levels_parallel(Y+1, R, Model, Bids ++ [Bid], NewCommands, NewCurrCoords);
+	    {NewCommands, NewCoords} = move_robots_back([Bid|Bids], Commands, CurrCoords),
+	    print_levels_parallel(R, R, Model, Bids ++ [Bid], NewCommands, NewCoords);
 	LevelPoints ->
 	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,Y,R+1}, {0,Y,0}),
 	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
 	    {Moves, NewPos} = bounding_box:print_box(BoxMin, BoxMax, CurrBidPos, Model),
+	    FinalPos = {1,Y,Bid},
+	    FinalMoves = bounding_box:move_robot(NewPos,FinalPos),
 	    %% io:format("Moves:~n~p~n", [Moves]),
 	    NewCommands = 
-		maps:update_with(Bid, fun(BidComms) -> BidComms ++ Moves end, Commands),
+		maps:update_with(Bid, fun(BidComms) -> BidComms ++ Moves ++ FinalMoves end, Commands),
 	    NewCurrCoords =
-		maps:update_with(Bid, fun(_) -> NewPos end, CurrCoords),
+		maps:update_with(Bid, fun(_) -> FinalPos end, CurrCoords),
 	    print_levels_parallel(Y+1, R, Model, Bids ++ [Bid], NewCommands, NewCurrCoords)
     end.
 
+move_robots_back([], Commands, CurrCoords) ->
+    {Commands, CurrCoords};
+move_robots_back([Bid|Bids], Commands, CurrCoords) ->
+    CurrBidPos = maps:get(Bid, CurrCoords),
+    MoveBack = bounding_box:move_robot(CurrBidPos, {1,Bid,Bid}),
+    NewCommands = 
+	maps:update_with(Bid, fun(BidComms) -> BidComms ++ MoveBack end, Commands),
+    NewCurrCoords =
+	maps:update_with(Bid, fun(_) -> {1,Bid,Bid} end, CurrCoords),
+    move_robots_back(Bids, NewCommands, NewCurrCoords).
+
 
 %% We need to end when we have dealt k times with each Bid
-serialize_parallel_moves([1|Bids], #{}, Acc) ->
+serialize_parallel_moves([1|Bids], Commands, Acc) when map_size(Commands) =:= 0 ->
     lists:reverse(Acc);
 serialize_parallel_moves([Bid|Bids], Commands, Acc) ->
+    %% io:format("Left Commands: ~n~p~n", [lists:map(fun(X) -> length(X) end, maps:values(Commands))]),
     case maps:find(Bid, Commands) of
 	{ok, []} ->
-	    serialize_parallel_moves(Bids ++ [Bid], maps:remove(Bid, Commands), [{swait, []}|Acc]);
+	    serialize_parallel_moves(Bids ++ [Bid], maps:remove(Bid, Commands), [{wait, []}|Acc]);
 	{ok, [Move|Moves]} ->
 	    serialize_parallel_moves(Bids ++ [Bid], maps:put(Bid, Moves, Commands), [Move|Acc]);
 	error ->
-	    serialize_parallel_moves(Bids ++ [Bid], Commands, [{swait, []}|Acc])
+	    serialize_parallel_moves(Bids ++ [Bid], Commands, [{wait, []}|Acc])
     end.
 
 
@@ -70,8 +86,9 @@ print_levels(Y, R, Model) ->
 	LevelPoints ->
 	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,R+1,R+1}, {0,0,0}),
 	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
-	    Moves = bounding_box:print_box(BoxMin, BoxMax, {1,Y,1}, Model),
-	    OptimizedMoves = bounding_box:optimize_one_bot_moves(Moves),
+	    {Moves,CurrPos} = bounding_box:print_box(BoxMin, BoxMax, {1,Y,1}, Model),
+	    FinalMoves = bounding_box:move_robot(CurrPos, {1, Y+1,1}),
+	    OptimizedMoves = bounding_box:optimize_one_bot_moves(Moves++FinalMoves),
 	    %% OptimizedMoves = Moves,
 	    %% io:format("Moves:~n~p~n", [Moves]),
 	    OptimizedMoves ++ print_levels(Y+1, R, Model)
