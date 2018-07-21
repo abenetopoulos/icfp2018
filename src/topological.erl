@@ -1,16 +1,19 @@
 -module(topological).
--export([sort/2]).
+-export([sort/2,
+	 height_map/2]).
 
-sort(R, Model) ->
-    ListOfIndices = lists:seq(0, R - 1),
-    IndexedModel = lists:zip(ListOfIndices, lists:map(
-                                              fun (X) ->
-                                                      lists:zip(ListOfIndices,
-                                                                lists:map(
-                                                                  fun (Y) ->
-                                                                          lists:zip(ListOfIndices, Y)
-                                                                  end, X))
-                                              end, Model)),
+
+height_map(R, Model) ->
+    ListOfIndices = lists:seq(1, R),
+    IndexedModel = lists:zip(ListOfIndices, 
+			     lists:map(
+			       fun (X) ->
+				       lists:zip(ListOfIndices,
+						 lists:map(
+						   fun (Y) ->
+							   lists:zip(ListOfIndices, Y)
+						   end, X))
+			       end, Model)),
     HeightMap = lists:foldl(fun({IndexX, X}, MapX) ->
                                     YMap = lists:foldl(fun ({IndexY, Y}, MapY) ->
                                                                ZMap = lists:foldl(fun ({IndexZ, Z}, MapZ) ->
@@ -20,6 +23,11 @@ sort(R, Model) ->
                                                        end, maps:new(), X),
                                     maps:put(IndexX, YMap, MapX)
                             end, maps:new(), IndexedModel),
+    HeightMap.
+
+sort(R, Model) ->
+    ListOfIndices = lists:seq(1, R),
+    HeightMap = height_map(R, Model),
     Grounded = get_grounded(ListOfIndices, HeightMap),
     get_sort(HeightMap, sets:from_list(Grounded)).
 

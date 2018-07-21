@@ -45,8 +45,11 @@ print_voxel(Min, Max, {X, Y, Z}, Model) ->
     Fill ++ Move ++ print_voxel(Min, Max, {X, Y, Z+1}, Model).
     
 
-%% TODO: Optimize
 model_get({X,Y,Z}, Model) ->
+    maps:get(Z, maps:get(Y, maps:get(X, Model))).
+
+%% TODO: Optimize
+list_model_get({X,Y,Z}, Model) ->
     nth(Z, nth(Y, nth(X, Model))).
 
 

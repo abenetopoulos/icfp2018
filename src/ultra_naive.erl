@@ -6,7 +6,8 @@
 
 print_model(R, Model) ->
     Flip = {flip, []},
-    Moves = print_levels(1, R, Model),
+    ModelMap = topological:height_map(R, Model),
+    Moves = print_levels(1, R, ModelMap),
     Halt = {halt, []},
     [Flip] ++ Moves ++ [Flip] ++ [Halt].
 
