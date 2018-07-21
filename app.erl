@@ -10,7 +10,8 @@ run_all() ->
 	      InputFilename = io_lib:format("problemsL/LA~3..0B_tgt.mdl", [Testcase]),
 	      OutputFilename = io_lib:format("output/LA~3..0B.nbt", [Testcase]),
 	      {R, Model} = parse_mdl:parse(InputFilename),
-	      Traces = ultra_naive:print_model(R, Model),
+	      ParBots = 19,
+	      Traces = ultra_naive:print_model_parallel(R, Model, ParBots),
 	      %% io:format("Model:~n~p~n", [Model]),
 	      %% io:format("Traces:~n~p~n", [Traces]),
 	      output:write_trace_file(Traces, OutputFilename),
@@ -19,9 +20,10 @@ run_all() ->
 
 
 main() ->
-    {R, Model} = parse_mdl:parse("problemsL/LA076_tgt.mdl"),
-    Traces = ultra_naive:print_model(R, Model),
-    %% Traces = ultra_naive:print_model_parallel(R, Model),
+    {R, Model} = parse_mdl:parse("problemsL/LA046_tgt.mdl"),
+    %% Traces = ultra_naive:print_model(R, Model),
+    ParBots = 19,
+    Traces = ultra_naive:print_model_parallel(R, Model, ParBots),
     %% SpawnCommands = parallel:spawn_bots(4),
     %% io:format("Spawns: ~p~n", [SpawnCommands]),
     %% io:format("Model:~n~p~n", [Model]),
