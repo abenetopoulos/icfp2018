@@ -16,7 +16,7 @@ print_levels(Y, R, Model) ->
 	    bounding_box:move_robot({1,Y,1}, {1,1,1});
 	LevelPoints ->
 	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,R+1,R+1}, {0,0,0}),
-	    io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
+	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
 	    Moves = bounding_box:print_box(BoxMin, BoxMax, {1,Y,1}, Model),
 	    %% io:format("Moves:~n~p~n", [Moves]),
 	    Moves ++ print_levels(Y+1, R, Model)
@@ -26,7 +26,7 @@ print_levels(Y, R, Model) ->
 points_in_level(Y, R, Model) ->
     AllPointsInLevel = lists:flatten([[{X, Y, Z} || X <- lists:seq(1,R)] 
 				      || Z <- lists:seq(1,R)]),
-    [{X, Y, Z} || {X, Y, Z} <- AllPointsInLevel, nth(Z, nth(Y, nth(X, Model))) =:= 1].
+    [{X, Y, Z} || {X, Y, Z} <- AllPointsInLevel, bounding_box:model_get({X,Y,Z}, Model) =:= 1].
 
 
 %% print_model(R, Model) ->

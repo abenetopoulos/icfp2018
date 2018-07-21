@@ -1,5 +1,5 @@
 -module(output).
--export([write_trace_file/1]).
+-export([write_trace_file/2]).
 
 -record(enc_lng_dist, {a :: string(),
                        i :: integer()
@@ -9,9 +9,8 @@
                        i :: integer()
                       }).
 
-write_trace_file(Trace) ->
+write_trace_file(Trace, OutputFile) ->
     EncodedTrace = lists:map(fun(Command) -> encode_command(Command) end, Trace),
-    OutputFile = "out_test.nbt",
     BinOfList = fun(L) ->
                         lists:foldl(fun(V, Acc) ->
                                             <<Acc/binary, V/binary>>

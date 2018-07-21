@@ -2,7 +2,8 @@
 
 -export([find_box/3,
 	 print_box/4,
-	 move_robot/2]).
+	 move_robot/2,
+	 model_get/2]).
 
 -import(lists, [nth/2]).
 
@@ -34,7 +35,7 @@ print_voxel(Min={_,MinY,_}, Max={_,MaxY,_}, Curr={X,Y,Z}, Model) when Y > MaxY -
 print_voxel(Min, Max, {X, Y, Z}, Model) ->
     %% erlang:display({X,Y,Z}),
     Fill =
-	case nth(Z-1, nth(Y, nth(X, Model))) of
+	case model_get({X,Y,Z-1}, Model) of
 	    0 -> 
 		[];
 	    1 ->
@@ -43,6 +44,10 @@ print_voxel(Min, Max, {X, Y, Z}, Model) ->
     Move = [{smove, [{0,0,1}]}],
     Fill ++ Move ++ print_voxel(Min, Max, {X, Y, Z+1}, Model).
     
+
+%% TODO: Optimize
+model_get({X,Y,Z}, Model) ->
+    nth(Z, nth(Y, nth(X, Model))).
 
 
 %% TODO: Optimize

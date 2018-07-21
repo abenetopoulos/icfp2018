@@ -5,20 +5,20 @@
 parse(Filename) ->
     {ok, Binary} = file:read_file(Filename),
     {R, Model} = parse_binary(Binary),
-    io:format("Binary:~n~p~n", [{R, binary:bin_to_list(Binary)}]),
-    io:format("R: ~p~nDims: ~p, ~p, ~p~n", [R, length(Model), length(hd(Model)), length(hd(hd(Model)))]),
+    %% io:format("Binary:~n~p~n", [{R, binary:bin_to_list(Binary)}]),
+    %% io:format("R: ~p~nDims: ~p, ~p, ~p~n", [R, length(Model), length(hd(Model)), length(hd(hd(Model)))]),
     {R, Model}.
 
 parse_binary(Binary) ->
     <<R:8, ModelBinary/bitstring>> = Binary,
     ModelBinaryCorrect = 
         [reverse_byte(<<B:8>>, <<>>) || B <- binary:bin_to_list(ModelBinary)],
-    io:format("MBC: ~p~n", [ModelBinaryCorrect]),
+    %% io:format("MBC: ~p~n", [ModelBinaryCorrect]),
     %% io:format("Binary:~n~p~n", [ModelBinary]),
     XLines = parse_x_lines(R, binary:list_to_bin(ModelBinaryCorrect), []),
     {R, XLines}.
 
-parse_x_lines(_R, <<>>, Planes) ->
+parse_x_lines(R, BinPlanes, Planes) when bit_size(BinPlanes) < R*R ->
     lists:reverse(Planes);
 parse_x_lines(R, BinPlanes, Planes) ->
     R2 = R*R,
@@ -29,7 +29,7 @@ parse_x_lines(R, BinPlanes, Planes) ->
     %% Rest = binary:part(BinPlanes, {R2, byte_size(BinPlanes) - R2}),
     <<Plane:R2/bitstring, Rest/bitstring>> = BinPlanes,
     YLines = parse_y_lines(R, <<Plane/bitstring>>, []),
-    io:format("BinPlane:~n~p~n", [Plane]),
+    %% io:format("BinPlane:~n~p~n", [Plane]),
     %% io:format("Plane:~n~p~n", [YLines]),
     parse_x_lines(R, Rest, [YLines|Planes]).
 

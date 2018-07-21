@@ -29,3 +29,6 @@ open_erl:
 
 test:
 	$(ERL) -pa $(EBIN_DIRS) -noshell -run app main $(args) $(HALT)
+
+execute_all:
+	$(ERL) -pa $(EBIN_DIRS) -noshell -run app run_all $(args) $(HALT)

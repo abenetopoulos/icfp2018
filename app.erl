@@ -1,13 +1,29 @@
 -module(app).
 
--export([main/0]).
+-export([main/0,
+	 run_all/0]).
+
+run_all() ->
+    Testcases = lists:seq(1, 186),
+    lists:foreach(
+      fun(Testcase) ->
+	      InputFilename = io_lib:format("problemsL/LA~3..0B_tgt.mdl", [Testcase]),
+	      OutputFilename = io_lib:format("output/LA~3..0B_tgt.nbt", [Testcase]),
+	      {R, Model} = parse_mdl:parse(InputFilename),
+	      Traces = ultra_naive:print_model(R, Model),
+	      %% io:format("Model:~n~p~n", [Model]),
+	      %% io:format("Traces:~n~p~n", [Traces]),
+	      output:write_trace_file(Traces, OutputFilename),
+	      io:format("Testcase: ~p done!~n", [Testcase])
+      end, Testcases).
+
 
 main() ->
     {R, Model} = parse_mdl:parse("problemsL/LA076_tgt.mdl"),
     Traces = ultra_naive:print_model(R, Model),
-    io:format("Model:~n~p~n", [Model]),
+    %% io:format("Model:~n~p~n", [Model]),
     %% io:format("Traces:~n~p~n", [Traces]),
-    output:write_trace_file(Traces),
+    output:write_trace_file(Traces, "out_test.nbt"),
     io:format("Wrote trace file~n").
 
 out_test() ->
