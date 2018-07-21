@@ -1,6 +1,7 @@
 -module(ultra_naive).
 
--export([print_model/2]).
+-export([print_model/2,
+	 print_model_parallel/2]).
 
 -import(lists, [nth/2]).
 
@@ -8,6 +9,17 @@ print_model(R, Model) ->
     Flip = {flip, []},
     ModelMap = topological:height_map(R, Model),
     Moves = print_levels(1, R, ModelMap),
+    Halt = {halt, []},
+    [Flip] ++ Moves ++ [Flip] ++ [Halt].
+
+print_model_parallel(R, Model) ->
+    Flip = {flip, []},
+    ModelMap = topological:height_map(R, Model),
+    SpawnMoves = parallel:spawn_bots(2),
+    io:format("SpawnMoves: ~p~n", [SpawnMoves]),
+    Bids = [1,2,3],
+    ParallelMoves = print_levels_parallel(1, R, ModelMap, [1], #{1 => []}, #{1 => {1,1,1}}),
+    Moves = serialize_parallel_moves([1], ParallelMoves, []),
     Halt = {halt, []},
     [Flip] ++ Moves ++ [Flip] ++ [Halt].
 
@@ -35,6 +47,22 @@ print_levels_parallel(Y, R, Model, [Bid|Bids], Commands, CurrCoords) ->
 	    print_levels_parallel(Y+1, R, Model, Bids ++ [Bid], NewCommands, NewCurrCoords)
     end.
 
+
+%% We need to end when we have dealt k times with each Bid
+serialize_parallel_moves([1|Bids], #{}, Acc) ->
+    lists:reverse(Acc);
+serialize_parallel_moves([Bid|Bids], Commands, Acc) ->
+    case maps:find(Bid, Commands) of
+	{ok, []} ->
+	    serialize_parallel_moves(Bids ++ [Bid], maps:remove(Bid, Commands), [{swait, []}|Acc]);
+	{ok, [Move|Moves]} ->
+	    serialize_parallel_moves(Bids ++ [Bid], maps:put(Bid, Moves, Commands), [Move|Acc]);
+	error ->
+	    serialize_parallel_moves(Bids ++ [Bid], Commands, [{swait, []}|Acc])
+    end.
+
+
+
 print_levels(Y, R, Model) ->
     case points_in_level(Y, R, Model) of
 	[] ->
@@ -44,6 +72,7 @@ print_levels(Y, R, Model) ->
 	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
 	    Moves = bounding_box:print_box(BoxMin, BoxMax, {1,Y,1}, Model),
 	    OptimizedMoves = bounding_box:optimize_one_bot_moves(Moves),
+	    %% OptimizedMoves = Moves,
 	    %% io:format("Moves:~n~p~n", [Moves]),
 	    OptimizedMoves ++ print_levels(Y+1, R, Model)
     end.

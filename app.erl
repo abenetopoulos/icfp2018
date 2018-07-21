@@ -21,6 +21,9 @@ run_all() ->
 main() ->
     {R, Model} = parse_mdl:parse("problemsL/LA076_tgt.mdl"),
     Traces = ultra_naive:print_model(R, Model),
+    %% Traces = ultra_naive:print_model_parallel(R, Model),
+    %% SpawnCommands = parallel:spawn_bots(4),
+    %% io:format("Spawns: ~p~n", [SpawnCommands]),
     %% io:format("Model:~n~p~n", [Model]),
     %% io:format("Traces:~n~p~n", [Traces]),
     %% SortedModel = topological:sort(R, Model),
