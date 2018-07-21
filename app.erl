@@ -23,6 +23,8 @@ main() ->
     Traces = ultra_naive:print_model(R, Model),
     %% io:format("Model:~n~p~n", [Model]),
     %% io:format("Traces:~n~p~n", [Traces]),
+    SortedModel = topological:sort(R, Model),
+    io:format("Sorted model:~n~p~n~p~n", [SortedModel, lists:foldl(fun(S, Acc) -> Acc + sets:size(S) end, 0, SortedModel)]),
     output:write_trace_file(Traces, "out_test.nbt"),
     io:format("Wrote trace file~n").
 

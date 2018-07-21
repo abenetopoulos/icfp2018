@@ -77,5 +77,3 @@ return(Dir, R, Curr) ->
 	    z -> {0, 0, Dist}
 	end,
     [{smove, [DC]}|return(Dir, R, Curr + Dist)].
-    
-    
