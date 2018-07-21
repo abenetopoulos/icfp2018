@@ -11,6 +11,30 @@ print_model(R, Model) ->
     Halt = {halt, []},
     [Flip] ++ Moves ++ [Flip] ++ [Halt].
 
+print_levels_parallel(R, R, Model, _Bids, Commands, CurrCoords) ->
+    Commands;
+print_levels_parallel(Y, R, Model, [Bid|Bids], Commands, CurrCoords) ->
+    CurrBidPos = maps:get(Bid, CurrCoords),
+    case points_in_level(Y, R, Model) of
+	[] ->
+	    MoveBack = bounding_box:move_robot(CurrBidPos, {1,Bid,Bid}),
+	    NewCommands = 
+		maps:update_with(Bid, fun(BidComms) -> BidComms ++ MoveBack end, Commands),
+	    NewCurrCoords =
+		maps:update_with(Bid, fun(_) -> {1,Bid,Bid} end, CurrCoords),
+	    print_levels_parallel(Y+1, R, Model, Bids ++ [Bid], NewCommands, NewCurrCoords);
+	LevelPoints ->
+	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,Y,R+1}, {0,Y,0}),
+	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
+	    {Moves, NewPos} = bounding_box:print_box(BoxMin, BoxMax, CurrBidPos, Model),
+	    %% io:format("Moves:~n~p~n", [Moves]),
+	    NewCommands = 
+		maps:update_with(Bid, fun(BidComms) -> BidComms ++ Moves end, Commands),
+	    NewCurrCoords =
+		maps:update_with(Bid, fun(_) -> NewPos end, CurrCoords),
+	    print_levels_parallel(Y+1, R, Model, Bids ++ [Bid], NewCommands, NewCurrCoords)
+    end.
+
 print_levels(Y, R, Model) ->
     case points_in_level(Y, R, Model) of
 	[] ->
@@ -19,8 +43,9 @@ print_levels(Y, R, Model) ->
 	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,R+1,R+1}, {0,0,0}),
 	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
 	    Moves = bounding_box:print_box(BoxMin, BoxMax, {1,Y,1}, Model),
+	    OptimizedMoves = bounding_box:optimize_one_bot_moves(Moves),
 	    %% io:format("Moves:~n~p~n", [Moves]),
-	    Moves ++ print_levels(Y+1, R, Model)
+	    OptimizedMoves ++ print_levels(Y+1, R, Model)
     end.
 
 

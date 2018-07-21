@@ -3,7 +3,8 @@
 -export([find_box/3,
 	 print_box/4,
 	 move_robot/2,
-	 model_get/2]).
+	 model_get/2,
+	 optimize_one_bot_moves/1]).
 
 -import(lists, [nth/2]).
 
@@ -21,7 +22,7 @@ print_box(Min, Max, Curr, Model) ->
     Pre ++ [{smove, [{0,0,1}]}] ++ Moves.	
     
 %% We paint the voxel behind us that is why Z > MaxZ + 1
-print_voxel(Min={_,_,MinZ}, Max={_,_,MaxZ}, Curr={X,Y,Z}, Model) when Z > (MaxZ+1) ->
+print_voxel(Min={_,_,MinZ}, Max={_,_,MaxZ}, Curr={X,Y,Z}, Model) when Z > MaxZ ->
     {_, ReturnMoves} = linear_move(z, Curr, Min),
     [{smove, [{1, 0, 0}]}] ++ ReturnMoves ++ 
 	print_voxel(Min, Max, {X + 1, Y, MinZ}, Model);
@@ -52,6 +53,38 @@ model_get({X,Y,Z}, Model) ->
 list_model_get({X,Y,Z}, Model) ->
     nth(Z, nth(Y, nth(X, Model))).
 
+optimize_one_bot_moves([Move|Moves]) ->
+    optimize_one_bot_moves(Moves, Move, []).
+
+optimize_one_bot_moves([], Last, Acc) ->
+    lists:reverse([Last|Acc]);
+optimize_one_bot_moves([Move|Moves], Last, Acc) ->
+    case mergeable(Move, Last) of
+	{ok, NewLast} ->
+	    optimize_one_bot_moves(Moves, NewLast, Acc);
+	no ->
+	    optimize_one_bot_moves(Moves, Move, [Last|Acc])
+    end.
+
+mergeable({smove,[Cd1]}, {smove,[Cd2]}) ->
+    case same_dir_and_short(Cd1, Cd2) of
+	{ok, NewCd} ->
+	    {ok, {smove, [NewCd]}};
+	no ->
+	    no
+    end;
+mergeable(_, _) -> no.
+
+
+same_dir_and_short({X1,0,0}, {X2,0,0}) when abs(X1 + X2) =< 15 andalso X1 + X2 =/= 0 ->
+    {ok, {X1 + X2, 0, 0}};
+same_dir_and_short({0,Y1,0}, {0,Y2,0}) when abs(Y1 + Y2) =< 15 andalso Y1 + Y2 =/= 0 ->
+    {ok, {0, Y1 + Y2, 0}};
+same_dir_and_short({0,0,Z1}, {0,0,Z2}) when abs(Z1 + Z2) =< 15 andalso Z1 + Z2 =/= 0 ->
+    {ok, {0, 0, Z1 + Z2}};
+same_dir_and_short(_, _) ->
+    no.
+    
 
 %% TODO: Optimize
 %% Moves first on y then on x then on z so that the robot does not crash on any filled block
