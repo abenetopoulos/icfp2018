@@ -9,6 +9,17 @@
 	      n_comms,  %% The number of commands or the time after the commands have finished
 	      mode}).   %% Could either be building or destroying
 
+execute(R, Model) ->
+    ModelMap = topological:height_map(R, Model),
+    ParBots = min(R * 2, 39),
+    XZSegments = parallel:make_xz_segments(R, ParBots),
+    SpawnMoves = parallel:spawn_bots(ParallelBots-1),
+    
+    %% TODO: Fill this, the whole infastructure below is a good way of splitting 
+    %%       the map in segments so that more parallelization can ensue
+
+    execute_sequential(R, Model).
+    
 
 execute_sequential(R, Model) ->
     ModelMap = topological:height_map(R, Model),

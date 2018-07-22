@@ -2,6 +2,7 @@
 
 -export([spawn_bots/1,
 	 gather_bots/1,
+	 make_xz_segments/2,
 	 create_stalls/2]).
 
 spawn_bots(N) ->
@@ -21,6 +22,17 @@ gather_bots(0, N) ->
 gather_bots(M, N) ->
     Waits = [{wait, []} ||  _ <- lists:seq(1, M-1)],
     Waits ++ [{fusionp, [{0,1,1}]}, {fusions, [{0,-1,-1}]} | gather_bots(M-1, N)].
+
+
+make_xz_segments(R, SegmentsPerPlane) ->
+    N = SegmentsPerPlane div 2,
+    lists:flatten([make_xz_segs(Si, N, R) || Si <- lists:seq(1,N)]).
+    
+make_xz_segs(Si, N, R) ->
+    RPS = R div N,
+    [{{(Si-1) * RPS + 1, 1},             {Si * RPS, R div 2}},
+     {{(Si-1) * RPS + 1, (R div 2) + 1}, {Si * RPS, R}}].
+
 
 create_stalls(Bids, Moves) ->
     Coords = maps:from_list([{B, {1,B,B}} || B <- Bids]),
