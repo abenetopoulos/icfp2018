@@ -1,5 +1,8 @@
 -module(output).
--export([write_trace_file/2]).
+-export([write_trace_file/2,
+	 encode_command/1]).
+
+
 
 -record(enc_lng_dist, {a :: string(),
                        i :: integer()
@@ -57,6 +60,8 @@ encode_short_linear_distance({Dx, Dy, Dz}) ->
 encode_near_coordinate_difference({Dx, Dy, Dz}) ->
     <<((Dx + 1) * 9 + (Dy + 1) * 3 + (Dz + 1)):5>>.
 
+encode_command({unoptimizable, Com}) ->
+    encode_command(Com);
 encode_command({Command, Params}) ->
     case Command of
         halt -> [<<255:8>>];
@@ -76,8 +81,8 @@ encode_command({Command, Params}) ->
             I1 = EncodedDistance1#enc_sht_dist.i,
             A2 = EncodedDistance2#enc_sht_dist.a,
             I2 = EncodedDistance2#enc_sht_dist.i,
-            FirstByte = <<A2/bitstring, A1/bitstring, 12:4>>,
-            SecondByte = <<I2/bitstring, I1/bitstring>>,
+            FirstByte = <<A2:2/bitstring, A1:2/bitstring, 12:4>>,
+            SecondByte = <<I2:4/bitstring, I1:4/bitstring>>,
             [FirstByte, SecondByte];
         fusionp ->
             EncodedDistance = encode_near_coordinate_difference(hd(Params)),

@@ -6,6 +6,7 @@
 	 move_robot_zxy/2,
 	 model_get/2,
 	 optimize_one_bot_moves/1,
+	 optimize_seq_trace/1,
 	 add_coords/2,
 	 scale_coords/2,
 	 filter_points_in_segment/3]).
@@ -72,6 +73,55 @@ model_get({X,Y,Z}, Model) ->
 %% TODO: Optimize
 list_model_get({X,Y,Z}, Model) ->
     nth(Z, nth(Y, nth(X, Model))).
+
+optimize_seq_trace(Commands) ->
+    optimize_seq_trace(Commands, {0,0,0}, []).
+
+optimize_seq_trace([], Buffer, Acc) ->
+    FinalMoves = instantiate_moves(Buffer),
+    lists:reverse(Acc) ++ FinalMoves;
+optimize_seq_trace([Com|Commands], Buffer, Acc) ->
+    case Com of
+	{smove, [Cd]} ->
+	    optimize_seq_trace(Commands, add_coords(Cd, Buffer), Acc);
+	{lmove, [Cd1, Cd2]} ->
+	    optimize_seq_trace(Commands, add_coords(Cd2, add_coords(Cd1, Buffer)), Acc);
+	_ ->
+	    BufferMoves = instantiate_moves(Buffer),
+	    NewAcc = [Com|lists:reverse(BufferMoves)] ++ Acc,
+	    optimize_seq_trace(Commands, {0,0,0}, NewAcc)
+    end.
+
+instantiate_moves(Buffer) ->
+    instantiate_moves(Buffer, []).
+
+instantiate_moves({0, 0, 0}, Acc) ->
+    lists:reverse(Acc);
+
+instantiate_moves({0, 0, Z}, Acc) ->
+    Dz = max(min(Z,15),-15),
+    instantiate_moves({0,0,Z-Dz}, [{smove, [{0,0,Dz}]}|Acc]);
+
+instantiate_moves({0, Y, Z}, Acc) when abs(Y) =< 5 andalso abs(Z) > 0 ->
+    Dy = Y,
+    Dz = max(min(Z,5),-5),
+    instantiate_moves({0,Y-Dy,Z-Dz}, [{lmove, [{0,Dy,0}, {0,0,Dz}]}|Acc]);
+instantiate_moves({0, Y, Z}, Acc) ->
+    Dy = max(min(Y,15),-15),
+    instantiate_moves({0,Y-Dy,Z}, [{smove, [{0,Dy,0}]}|Acc]);
+
+instantiate_moves({X, Y, Z}, Acc) when abs(X) =< 5 andalso abs(Y) > 0 ->
+    Dx = X,
+    Dy = max(min(Y,5),-5),
+    instantiate_moves({X-Dx,Y-Dy,Z}, [{lmove, [{Dx,0,0}, {0,Dy,0}]}|Acc]);
+instantiate_moves({X, Y, Z}, Acc) when abs(X) =< 5 andalso abs(Z) > 0 ->
+    Dx = X,
+    Dz = max(min(Z,5),-5),
+    instantiate_moves({X-Dx,Y,Z-Dz}, [{lmove, [{Dx,0,0}, {0,0,Dz}]}|Acc]);
+instantiate_moves({X, Y, Z}, Acc)->
+    Dx = max(min(X,15),-15),
+    instantiate_moves({X-Dx,Y,Z}, [{smove, [{Dx,0,0}]}|Acc]).
+    
 
 optimize_one_bot_moves([]) ->
     [];

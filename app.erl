@@ -24,11 +24,13 @@ run_all() ->
 
 
 main() ->
-    File = "LA003_tgt.mdl",
+    File = "LA010_tgt.mdl",
     {R, Model} = parse_mdl:parse("problemsL/" ++ File),
     Trace = hypervisor:execute(R, Model),
+    %% io:format("Trace:~n~p~n", [Trace]),
     output:write_trace_file(Trace, "out_test.nbt"),
     io:format("Wrote trace file for: ~p~n", [File]).
+
 
 
 old_main() ->

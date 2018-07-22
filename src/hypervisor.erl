@@ -10,10 +10,8 @@
 	      mode}).   %% Could either be building or destroying
 
 
-execute(R, Model) ->
-    Flip = {flip, []},
+execute_sequential(R, Model) ->
     ModelMap = topological:height_map(R, Model),
-    Halt = {halt, []},
     InitialBotState = init_bot_state(),
     FinalBotState = 
 	lists:foldl(
@@ -21,7 +19,13 @@ execute(R, Model) ->
 		  bot_process_segment(BotState, {{1,Y,1},{R,Y,R}}, ModelMap)
 	  end, InitialBotState, lists:seq(1, R-1)),
     MoveBack = bounding_box:move_robot_zxy(FinalBotState#bot.coords, {1,1,1}),
-    [Flip] ++ FinalBotState#bot.commands ++ [Flip] ++ MoveBack ++ [Halt].
+    OptimizedCommands = bounding_box:optimize_seq_trace(FinalBotState#bot.commands),
+    complete_commands(OptimizedCommands ++ MoveBack).
+
+complete_commands(Commands) ->
+    Flip = {flip, []},
+    Halt = {halt, []},    
+    [Flip] ++ Commands ++ [Flip] ++ [Halt].
 
 init_bot_state() ->
     #bot{coords = {1,1,1},
@@ -44,7 +48,9 @@ bot_process_segment(BotState, Segment, Model) ->
     %% There is no need for a bounding box as 
     %% we are going to optimize away moves without any fill in between them
     {NewBotState, NewCommands} = bot_move_loop(BotState, to_fill_fun(Model), Segment, []),
-    OptimizedCommands = bounding_box:optimize_one_bot_moves(NewCommands),
+    %% io:format("NewCommands:~n~p~n", [NewCommands]),
+    OptimizedCommands = bounding_box:optimize_seq_trace(NewCommands),
+    %% io:format("OptCommands:~n~p~n", [OptimizedCommands]),
     FinalBotState = 
 	NewBotState#bot{commands = NewBotState#bot.commands ++ OptimizedCommands,
 			n_comms = NewBotState#bot.n_comms + length(OptimizedCommands)},
@@ -63,7 +69,7 @@ bot_move_loop(BotState, ActionFun, Borders, AccCommands) ->
 		    %% TODO:I am not handling the last coordinate
 		    NewDir2 = bounding_box:scale_coords(-1, Dir2),
 		    NextPos3 = bounding_box:add_coords(Coords, {0,1,0}),
-		    MoveCommand = {smove, [{0,1,0}]},
+		    MoveCommand = {unoptimizable, {smove, [{0,1,0}]}},
 		    ActionCommands = ActionFun(Coords, {0,1,0}),
 		    NewAccCommands = lists:reverse(ActionCommands) ++ [MoveCommand|AccCommands],
 		    NewBotState = BotState#bot{coords = NextPos3, dir1 = NewDir1, dir2 = NewDir2},
