@@ -14,22 +14,31 @@ run_all() ->
 	      ModelMap = topological:height_map(R, Model),
 	      HighestLevel = highest_level(R, R, ModelMap),
 	      AdequateParBots = min(ParBots, HighestLevel),
-	      Traces = ultra_naive:print_model_parallel(R, Model, AdequateParBots),
+	      %% Trace = ultra_naive:print_model_parallel(R, Model, AdequateParBots, HighestLevel),
+	      Trace = hypervisor:execute(R, Model),
 	      %% io:format("Model:~n~p~n", [Model]),
 	      %% io:format("Traces:~n~p~n", [Traces]),
-	      output:write_trace_file(Traces, OutputFilename),
+	      output:write_trace_file(Trace, OutputFilename),
 	      io:format("Testcase: ~p done!~n", [Testcase])
       end, Testcases).
 
 
 main() ->
+    File = "LA003_tgt.mdl",
+    {R, Model} = parse_mdl:parse("problemsL/" ++ File),
+    Trace = hypervisor:execute(R, Model),
+    output:write_trace_file(Trace, "out_test.nbt"),
+    io:format("Wrote trace file for: ~p~n", [File]).
+
+
+old_main() ->
     {R, Model} = parse_mdl:parse("problemsL/LA003_tgt.mdl"),
     %% Traces = ultra_naive:print_model(R, Model),
     ParBots = 19,
     ModelMap = topological:height_map(R, Model),
     HighestLevel = highest_level(R, R, ModelMap),
     AdequateParBots = min(ParBots, HighestLevel),
-    Traces = ultra_naive:print_model_parallel(R, Model, AdequateParBots),
+    Traces = ultra_naive:print_model_parallel(R, Model, AdequateParBots, HighestLevel),
     %% SpawnCommands = parallel:spawn_bots(4),
     %% io:format("Spawns: ~p~n", [SpawnCommands]),
     %% io:format("Model:~n~p~n", [Model]),

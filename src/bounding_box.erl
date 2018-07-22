@@ -1,13 +1,19 @@
 -module(bounding_box).
 
--export([find_box/3,
+-export([find_box/1,
 	 print_box/4,
 	 move_robot/2,
+	 move_robot_zxy/2,
 	 model_get/2,
 	 optimize_one_bot_moves/1,
-	 add_coords/2]).
+	 add_coords/2,
+	 scale_coords/2,
+	 filter_points_in_segment/3]).
 
 -import(lists, [nth/2]).
+
+find_box([Point|Points]) ->
+    find_box(Points, Point, Point).
 
 find_box([], Min, Max) ->
     {Min, Max};
@@ -67,6 +73,8 @@ model_get({X,Y,Z}, Model) ->
 list_model_get({X,Y,Z}, Model) ->
     nth(Z, nth(Y, nth(X, Model))).
 
+optimize_one_bot_moves([]) ->
+    [];
 optimize_one_bot_moves([Move|Moves]) ->
     optimize_one_bot_moves(Moves, Move, []).
 
@@ -138,6 +146,12 @@ move_robot(From, To) ->
     {To, MovesZ} = linear_move(z, TempX, To),
     MovesY ++ MovesX ++ MovesZ.
 
+move_robot_zxy(From, To) -> 
+    {TempZ, MovesZ} = linear_move(z, From, To),
+    {TempX, MovesX} = linear_move(x, TempZ, To),
+    {To, MovesY} = linear_move(y, TempX, To),
+    MovesZ ++ MovesX ++ MovesY.
+
 linear_move(Dir, From, To) ->
     linear_move(Dir, From, To, []).
 
@@ -165,3 +179,12 @@ linear_move(Dir, F = {Fx, Fy, Fz}, T = {Tx, Ty, Tz}, Acc) ->
     
 add_coords({X1, Y1, Z1}, {X2, Y2, Z2}) ->
     {X1 + X2, Y1 + Y2, Z1 + Z2}.
+
+scale_coords(S, {X, Y, Z}) ->
+    {S * X, S * Y, S* Z}.
+
+filter_points_in_segment({X1, Y1, Z1}, {X2, Y2, Z2}, FilterFun) ->
+    AllPointsInSegment = lists:flatten([[[{X, Y, Z} || X <- lists:seq(X1,X2)] 
+				       || Y <- lists:seq(Y1,Y2)]
+				      || Z <- lists:seq(Z1,Z2)]),
+    [{X, Y, Z} || {X, Y, Z} <- AllPointsInSegment, FilterFun({X,Y,Z})].

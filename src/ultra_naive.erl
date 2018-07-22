@@ -30,7 +30,7 @@ print_model_parallel(R, Model, ParallelBots, HighestLevel) ->
     GatherMoves = parallel:gather_bots(ParallelBots-1),
     %% io:format("GatherMoves: ~p~n", [GatherMoves]),
     Halt = {halt, []},
-    io:format("Highestlevel: ~p~n", [HighestLevel]),
+    %% io:format("Highestlevel: ~p~n", [HighestLevel]),
     case HighestLevel of
 	1 ->
 	    SpawnMoves ++ Moves ++ GatherMoves ++ [Halt];
@@ -48,7 +48,7 @@ print_levels_parallel(Y, R, Model, [{Bid, Work}|BidsWork], Commands, CurrCoords)
 	[] ->
 	    print_levels_parallel(R, R, Model, insert_bids_work({Bid, Work}, BidsWork), Commands, CurrCoords);
 	LevelPoints ->
-	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,Y,R+1}, {0,Y,0}),
+	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints),
 	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
 	    {Moves, NewPos} = bounding_box:print_box(BoxMin, BoxMax, CurrBidPos, Model),
 	    FinalPos = {1,Y,Bid},
@@ -111,7 +111,7 @@ print_levels(Y, R, Model) ->
 	[] ->
 	    bounding_box:move_robot({1,Y,1}, {1,1,1});
 	LevelPoints ->
-	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints, {R+1,R+1,R+1}, {0,0,0}),
+	    {BoxMin, BoxMax} = bounding_box:find_box(LevelPoints),
 	    %% io:format("Level: ~p Box: {~p, ~p}~n", [Y, BoxMin, BoxMax]),
 	    {Moves,CurrPos} = bounding_box:print_box(BoxMin, BoxMax, {1,Y,1}, Model),
 	    FinalMoves = bounding_box:move_robot(CurrPos, {1, Y+1,1}),
@@ -123,9 +123,8 @@ print_levels(Y, R, Model) ->
 
 
 points_in_level(Y, R, Model) ->
-    AllPointsInLevel = lists:flatten([[{X, Y, Z} || X <- lists:seq(1,R)] 
-				      || Z <- lists:seq(1,R)]),
-    [{X, Y, Z} || {X, Y, Z} <- AllPointsInLevel, bounding_box:model_get({X,Y,Z}, Model) =:= 1].
+    bounding_box:filter_points_in_segment({1,Y,1}, {R,Y,R}, 
+				   fun({X,Y,Z}) -> bounding_box:model_get({X,Y,Z}, Model) =:= 1 end).
 
 
 %% print_model(R, Model) ->
